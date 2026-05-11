@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Arrival Counter — Dickinson @ Universal</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@500&display=swap');
+  :root {
+    --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;
+    --border:rgba(255,255,255,0.08);--border2:rgba(255,255,255,0.15);
+    --text:#f0f0f5;--muted:#8a8fa8;
+    --accent:#4f9cf9;
+    --purple:#a78bfa;
+    --gold:#f9c74f;
+    --success:#4fcf8a;--danger:#f94f4f;--accent2:#f9934f;
+    --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 20px 14px;position:sticky;top:0;z-index:100}
+  .header-top{display:flex;align-items:center;justify-content:space-between}
+  .logo{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+  .logo span{color:var(--accent)}
+  .clock{font-family:var(--mono);font-size:14px;color:var(--muted);background:var(--bg);padding:4px 10px;border-radius:6px;border:1px solid var(--border)}
+  .tabs{display:flex;gap:4px;margin-top:12px}
+  .tab{flex:1;padding:8px;border:none;border-radius:8px;font-family:var(--font);font-size:13px;font-weight:500;cursor:pointer;background:transparent;color:var(--muted);transition:all .15s}
+  .tab.active{background:var(--accent);color:#fff}
+
+  .page{display:none;padding:20px}
+  .page.active{display:block}
+
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+  .field select,.field input[type=text],.field input[type=number],.field textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;font-family:var(--font);font-size:16px;color:var(--text);outline:none;appearance:none;-webkit-appearance:none;transition:border-color .15s}
+  .field select:focus,.field input:focus{border-color:var(--accent)}
+  .field select option{background:#1a1d27}
+  .field textarea{resize:none;height:72px;line-height:1.5;font-size:15px}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .field-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .section-head{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin:24px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+  .error-msg{background:rgba(249,79,79,.1);border:1px solid rgba(249,79,79,.3);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+
+  /* Count input cards */
+  .count-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px}
+  .count-card{border-radius:14px;padding:14px 10px;text-align:center;border:1px solid var(--border)}
+  .count-card.standby{border-color:rgba(79,156,249,.5);background:rgba(79,156,249,.06)}
+  .count-card.express{border-color:rgba(167,139,250,.5);background:rgba(167,139,250,.06)}
+  .count-card.exits  {border-color:rgba(249,199,79,.5); background:rgba(249,199,79,.06)}
+  .cc-role{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+  .count-card.standby .cc-role{color:var(--accent)}
+  .count-card.express .cc-role{color:var(--purple)}
+  .count-card.exits   .cc-role{color:var(--gold)}
+  .cc-desc{font-size:9px;color:var(--muted);margin-bottom:10px;line-height:1.3}
+  .cc-input{width:100%;background:var(--surface2);border:2px solid var(--border);border-radius:8px;padding:12px 4px;font-family:var(--mono);font-size:26px;font-weight:500;color:var(--text);text-align:center;outline:none;-webkit-appearance:none;appearance:none;transition:border-color .15s}
+  .count-card.standby .cc-input:focus{border-color:var(--accent)}
+  .count-card.express .cc-input:focus{border-color:var(--purple)}
+  .count-card.exits   .cc-input:focus{border-color:var(--gold)}
+  .cc-input::placeholder{color:rgba(255,255,255,.15)}
+
+  /* Live fraction preview */
+  .frac-preview{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 16px;margin-bottom:20px}
+  .frac-bar{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden;margin-bottom:10px}
+  .frac-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--purple));transition:width .3s;border-radius:4px}
+  .frac-stats{display:flex;justify-content:space-around;text-align:center}
+  .fstat .fv{font-family:var(--mono);font-size:17px;font-weight:500}
+  .fstat .fl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+  .fstat-sb .fv{color:var(--accent)}
+  .fstat-ex .fv{color:var(--purple)}
+  .fstat-ef .fv{color:var(--accent2)}
+  .fstat-out .fv{color:var(--gold)}
+
+  .submit-btn{width:100%;padding:20px;background:var(--success);color:#0f1117;border:none;border-radius:16px;font-family:var(--font);font-size:18px;font-weight:600;cursor:pointer;transition:all .15s}
+  .submit-btn:active{transform:scale(.97)}
+  .submit-btn:disabled{opacity:.5;cursor:not-allowed}
+
+  /* Success */
+  .success-screen{display:none;text-align:center;padding:48px 20px}
+  .success-screen.visible{display:block}
+  .success-icon{width:72px;height:72px;border-radius:50%;background:rgba(79,207,138,.15);border:2px solid var(--success);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:32px}
+  .success-screen h2{font-size:22px;margin-bottom:8px}
+  .success-screen p{color:var(--muted);font-size:15px;margin-bottom:24px;line-height:1.5}
+  .result-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:24px}
+  .result-card{background:var(--surface2);border-radius:12px;padding:14px 8px;text-align:center}
+  .result-val{font-family:var(--mono);font-size:22px;font-weight:500}
+  .result-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:3px}
+  .btn-new{background:var(--accent);color:#fff;width:100%;padding:18px;border:none;border-radius:14px;font-family:var(--font);font-size:17px;font-weight:600;cursor:pointer}
+
+  /* Dashboard */
+  .dash-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .dash-header h2{font-size:18px}
+  .refresh-btn{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:var(--font);font-size:13px;color:var(--muted);cursor:pointer}
+  .stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px}
+  .stat-card .s-val{font-family:var(--mono);font-size:26px;font-weight:500;line-height:1}
+  .stat-card .s-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px}
+  .park-filter{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:4px}
+  .park-pill{flex-shrink:0;padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);font-family:var(--font);font-size:12px;color:var(--muted);cursor:pointer;white-space:nowrap}
+  .park-pill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .ride-row{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+  .rr-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+  .rr-name{font-size:14px;font-weight:500;max-width:175px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rr-park{font-size:11px;color:var(--muted);margin-top:2px}
+  .rr-frac{font-family:var(--mono);font-size:16px;font-weight:500;color:var(--accent2)}
+  .rr-sessions{font-size:11px;color:var(--muted);margin-top:2px;text-align:right}
+  .rr-lambdas{display:flex;gap:14px;padding-top:6px;border-top:1px solid var(--border)}
+  .rr-lam{font-size:11px;color:var(--muted)}
+  .rr-lam span{font-family:var(--mono);font-size:12px}
+  .lsb{color:var(--accent)}.lex{color:var(--purple)}.lout{color:var(--gold)}
+  .loading-dash{text-align:center;padding:40px;color:var(--muted);font-size:14px}
+  .dash-empty{text-align:center;padding:32px 20px;color:var(--muted);font-size:14px;line-height:1.6}
+  .spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="logo">Dickinson <span>@ Universal</span> · Counter</div>
+    <div class="clock" id="clock">--:--</div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('entry',this)">Enter Counting Data</button>
+    <button class="tab" onclick="switchTab('dash',this)">Dashboard</button>
+  </div>
+</div>
+
+<!-- ══ ENTRY PAGE ══════════════════════════════════════════════ -->
+<div class="page active" id="page-entry">
+
+  <div id="entry-form">
+
+    <div class="section-head">Who</div>
+    <div class="field-row-3">
+      <div class="field">
+        <label style="color:var(--accent)">Counter A<br><span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">Standby entrance</span></label>
+        <select id="e-counter-a">
+          <option value="">— name —</option>
+          <option>Trini</option><option>Quan</option><option>Sophia</option>
+          <option>Claire</option><option>Norah</option><option>Daria</option>
+          <option>Carter</option><option>Kevin</option><option>Dick</option><option>Barry</option>
+        </select>
+      </div>
+      <div class="field">
+        <label style="color:var(--purple)">Counter B<br><span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">Express entrance</span></label>
+        <select id="e-counter-b">
+          <option value="">— name —</option>
+          <option>Trini</option><option>Quan</option><option>Sophia</option>
+          <option>Claire</option><option>Norah</option><option>Daria</option>
+          <option>Carter</option><option>Kevin</option><option>Dick</option><option>Barry</option>
+        </select>
+      </div>
+      <div class="field">
+        <label style="color:var(--gold)">Counter C<br><span style="color:var(--muted);font-size:10px;text-transform:none;letter-spacing:0">Exit / boarding</span></label>
+        <select id="e-counter-c">
+          <option value="">— name —</option>
+          <option>Trini</option><option>Quan</option><option>Sophia</option>
+          <option>Claire</option><option>Norah</option><option>Daria</option>
+          <option>Carter</option><option>Kevin</option><option>Dick</option><option>Barry</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section-head">Where &amp; When</div>
+    <div class="field">
+      <label>Park</label>
+      <select id="e-park" onchange="updateAttractions('e-park','e-attraction')">
+        <option value="">— select park —</option>
+        <option value="Islands of Adventure">Islands of Adventure</option>
+        <option value="Universal Studios Florida">Universal Studios Florida</option>
+        <option value="Epic Universe">Epic Universe</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Attraction</label>
+      <select id="e-attraction"><option value="">— select park first —</option></select>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Date</label>
+        <input type="text" id="e-date" placeholder="MM/DD/YYYY">
+      </div>
+      <div class="field">
+        <label>Start Time</label>
+        <input type="text" id="e-time" placeholder="10:32 AM">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Time Window</label>
+        <select id="e-timewindow">
+          <option value="">— select —</option>
+          <option value="Morning">Morning (9–11 AM)</option>
+          <option value="Midday">Midday (11 AM–2 PM)</option>
+          <option value="Afternoon">Afternoon (2–5 PM)</option>
+          <option value="Evening">Evening (5 PM–close)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Duration (min)</label>
+        <input type="number" id="e-duration" value="30" min="1" max="60" inputmode="numeric">
+      </div>
+    </div>
+
+    <div class="section-head">Clicker Totals</div>
+    <div class="count-cards">
+      <div class="count-card standby">
+        <div class="cc-role">Standby</div>
+        <div class="cc-desc">Counter A<br>total entries</div>
+        <input class="cc-input" type="number" id="e-standby"
+               inputmode="numeric" min="0" placeholder="0"
+               oninput="refreshPreview()">
+      </div>
+      <div class="count-card express">
+        <div class="cc-role">Express</div>
+        <div class="cc-desc">Counter B<br>total entries</div>
+        <input class="cc-input" type="number" id="e-express"
+               inputmode="numeric" min="0" placeholder="0"
+               oninput="refreshPreview()">
+      </div>
+      <div class="count-card exits">
+        <div class="cc-role">Exits</div>
+        <div class="cc-desc">Counter C<br>total boardings</div>
+        <input class="cc-input" type="number" id="e-exits"
+               inputmode="numeric" min="0" placeholder="0"
+               oninput="refreshPreview()">
+      </div>
+    </div>
+
+    <!-- Live preview -->
+    <div class="frac-preview" id="frac-preview" style="display:none">
+      <div class="frac-bar">
+        <div class="frac-bar-fill" id="frac-fill" style="width:0%"></div>
+      </div>
+      <div class="frac-stats">
+        <div class="fstat fstat-sb"><div class="fv" id="prev-sb">—</div><div class="fl">λ Standby</div></div>
+        <div class="fstat fstat-ex"><div class="fv" id="prev-ex">—</div><div class="fl">λ Express</div></div>
+        <div class="fstat fstat-ef"><div class="fv" id="prev-frac">—</div><div class="fl">Exp Fraction</div></div>
+        <div class="fstat fstat-out"><div class="fv" id="prev-out">—</div><div class="fl">λ Exits</div></div>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Notes (optional)</label>
+      <textarea id="e-notes" placeholder="e.g. single rider lane active, ride went down briefly…"></textarea>
+    </div>
+
+    <div class="error-msg" id="entry-error"></div>
+    <button class="submit-btn" id="submit-btn" onclick="submitEntry()">Submit Entry</button>
+  </div>
+
+  <div class="success-screen" id="entry-success">
+    <div class="success-icon">✓</div>
+    <h2>Entry Saved!</h2>
+    <p id="success-msg">Counts submitted successfully.</p>
+    <div class="result-grid" id="result-grid"></div>
+    <button class="btn-new" onclick="resetEntry()">Enter Another Session</button>
+  </div>
+</div>
+
+<!-- ══ DASHBOARD PAGE ══════════════════════════════════════════ -->
+<div class="page" id="page-dash">
+  <div class="dash-header">
+    <h2>Live Summary</h2>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadDashboard()">↻ Refresh</button>
+  </div>
+  <div class="park-filter">
+    <button class="park-pill active" onclick="filterDash('All',this)">All Parks</button>
+    <button class="park-pill" onclick="filterDash('Islands of Adventure',this)">IOA</button>
+    <button class="park-pill" onclick="filterDash('Universal Studios Florida',this)">USF</button>
+    <button class="park-pill" onclick="filterDash('Epic Universe',this)">Epic Universe</button>
+  </div>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="s-val" id="d-total">—</div><div class="s-label">Sessions</div></div>
+    <div class="stat-card"><div class="s-val" id="d-frac" style="color:var(--accent2)">—</div><div class="s-label">Avg Express Fraction</div></div>
+    <div class="stat-card"><div class="s-val" id="d-sb" style="color:var(--accent)">—</div><div class="s-label">Avg λ Standby /min</div></div>
+    <div class="stat-card"><div class="s-val" id="d-out" style="color:var(--gold)">—</div><div class="s-label">Avg λ Exits /min</div></div>
+  </div>
+  <div class="section-head">By Attraction</div>
+  <div id="dash-rides"><div class="loading-dash">Tap Refresh to load data</div></div>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbys5ZH9cbCmBbf3nQsy1zsHFK72Of5Fq3BTXgELTsYLNUBBgx8RFL0RY4x_l9BXELCefg/exec";
+
+const ATTRACTIONS = {
+  "Islands of Adventure": [
+    "The Amazing Adventures of Spider-Man","Doctor Doom's Fearfall",
+    "The Incredible Hulk Coaster","Storm Force Accelatron",
+    "Skull Island: Reign of Kong","Jurassic World VelociCoaster",
+    "Jurassic Park River Adventure","Harry Potter and the Forbidden Journey",
+    "Hagrid's Magical Creatures Motorbike Adventure","Flight of the Hippogriff",
+    "Hogwarts Express (IOA)","Dudley Do-Right's Ripsaw Falls",
+    "Popeye & Bluto's Bilge-Rat Barges","The Cat in the Hat",
+    "The High in the Sky Seuss Trolley Train Ride","Caro-Seuss-el",
+    "One Fish, Two Fish, Red Fish, Blue Fish"
+  ],
+  "Universal Studios Florida": [
+    "Harry Potter and the Escape from Gringotts","Hogwarts Express (USF)",
+    "Transformers: The Ride – 3D","Despicable Me Minion Mayhem",
+    "Illumination's Villain-Con Minion Blast","The Bourne Stuntacular",
+    "Race Through New York Starring Jimmy Fallon","Fast & Furious – Supercharged",
+    "Men in Black Alien Attack","The Simpsons Ride",
+    "Kang & Kodos' Twirl 'n' Hurl","E.T. Adventure"
+  ],
+  "Epic Universe": [
+    "Harry Potter and the Battle at the Ministry","Le Cirque Arcanus",
+    "Monsters Unchained: The Frankenstein Experiment","Curse of the Werewolf",
+    "Mario Kart: Bowser's Challenge","Mine-Cart Madness","Yoshi's Adventure",
+    "Stardust Racers","Constellation Carousel","Hiccup's Wing Gliders",
+    "Fyre Drill","The Untrainable Dragon"
+  ]
+};
+
+let allDashData = [];
+let dashFilter  = "All";
+
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clock').textContent =
+    n.getHours().toString().padStart(2,'0') + ':' +
+    n.getMinutes().toString().padStart(2,'0');
+}
+setInterval(updateClock, 1000); updateClock();
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + tab).classList.add('active');
+  el.classList.add('active');
+  if (tab === 'dash') loadDashboard();
+}
+
+function updateAttractions(parkId, attrId) {
+  const park = document.getElementById(parkId).value;
+  const sel  = document.getElementById(attrId);
+  sel.innerHTML = '<option value="">— select attraction —</option>';
+  if (park && ATTRACTIONS[park])
+    ATTRACTIONS[park].forEach(a => {
+      const o = document.createElement('option');
+      o.value = a; o.textContent = a; sel.appendChild(o);
+    });
+}
+
+function formatTime(d) {
+  let h = d.getHours(); const m = d.getMinutes().toString().padStart(2,'0');
+  const a = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  return h + ':' + m + ' ' + a;
+}
+function formatDate(d) {
+  return (d.getMonth()+1) + '/' + d.getDate() + '/' + d.getFullYear();
+}
+
+// Live preview updates as counts are typed
+function refreshPreview() {
+  const sb  = parseInt(document.getElementById('e-standby').value) || 0;
+  const ex  = parseInt(document.getElementById('e-express').value) || 0;
+  const out = parseInt(document.getElementById('e-exits').value)   || 0;
+  const dur = parseInt(document.getElementById('e-duration').value) || 1;
+  const total = sb + ex;
+
+  const preview = document.getElementById('frac-preview');
+  if (sb === 0 && ex === 0 && out === 0) { preview.style.display = 'none'; return; }
+  preview.style.display = 'block';
+
+  const exPct = total > 0 ? Math.round((ex/total)*100) : 0;
+  const frac  = total > 0 ? (ex/total).toFixed(2) : '—';
+
+  document.getElementById('frac-fill').style.width  = exPct + '%';
+  document.getElementById('prev-sb').textContent    = (sb  / dur).toFixed(1);
+  document.getElementById('prev-ex').textContent    = (ex  / dur).toFixed(1);
+  document.getElementById('prev-out').textContent   = (out / dur).toFixed(1);
+  document.getElementById('prev-frac').textContent  = frac;
+}
+
+async function submitEntry() {
+  const cA   = document.getElementById('e-counter-a').value;
+  const cB   = document.getElementById('e-counter-b').value;
+  const cC   = document.getElementById('e-counter-c').value;
+  const park = document.getElementById('e-park').value;
+  const ride = document.getElementById('e-attraction').value;
+  const date = document.getElementById('e-date').value;
+  const time = document.getElementById('e-time').value;
+  const tw   = document.getElementById('e-timewindow').value;
+  const dur  = document.getElementById('e-duration').value;
+  const sb   = document.getElementById('e-standby').value;
+  const ex   = document.getElementById('e-express').value;
+  const out  = document.getElementById('e-exits').value;
+  const err  = document.getElementById('entry-error');
+
+  if (!cA||!cB||!cC||!park||!ride||!date||!time||!tw||!dur||sb===''||ex===''||out==='') {
+    err.textContent = 'Please fill in all fields before submitting.';
+    err.style.display = 'block'; return;
+  }
+  err.style.display = 'none';
+
+  const sbN = parseInt(sb), exN = parseInt(ex), outN = parseInt(out);
+  const durN = parseInt(dur), total = sbN + exN;
+
+  const payload = {
+    type:            'arrivals',
+    counterA:         cA,
+    counterB:         cB,
+    counterC:         cC,
+    park,
+    attraction:       ride,
+    date,
+    startTime:        time,
+    timeWindow:       tw,
+    duration:         durN,
+    totalStandby:     sbN,
+    totalExpress:     exN,
+    totalExits:       outN,
+    expressFraction:  total > 0 ? (exN / total).toFixed(3) : null,
+    lambdaStandby:    (sbN  / durN).toFixed(2),
+    lambdaExpress:    (exN  / durN).toFixed(2),
+    lambdaExits:      (outN / durN).toFixed(2),
+    notes:            document.getElementById('e-notes').value || ''
+  };
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = 'Submitting…';
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    const fracPct = payload.expressFraction
+      ? (parseFloat(payload.expressFraction)*100).toFixed(1) + '%' : '—';
+    document.getElementById('success-msg').textContent =
+      ride + ' · ' + durN + ' min session saved';
+    document.getElementById('result-grid').innerHTML =
+      `<div class="result-card"><div class="result-val" style="color:var(--accent)">${sbN}</div><div class="result-label">Standby entries</div></div>` +
+      `<div class="result-card"><div class="result-val" style="color:var(--purple)">${exN}</div><div class="result-label">Express entries</div></div>` +
+      `<div class="result-card"><div class="result-val" style="color:var(--gold)">${outN}</div><div class="result-label">Exits / boardings</div></div>` +
+      `<div class="result-card"><div class="result-val" style="color:var(--accent2)">${fracPct}</div><div class="result-label">Express fraction</div></div>`;
+    document.getElementById('entry-form').style.display = 'none';
+    document.getElementById('entry-success').classList.add('visible');
+  } catch(e) {
+    err.textContent = 'Submission failed. Check your connection and try again.';
+    err.style.display = 'block';
+  }
+
+  btn.disabled = false; btn.textContent = 'Submit Entry';
+}
+
+function resetEntry() {
+  document.getElementById('entry-success').classList.remove('visible');
+  document.getElementById('entry-form').style.display = 'block';
+  document.getElementById('entry-error').style.display = 'none';
+  document.getElementById('frac-preview').style.display = 'none';
+  ['e-counter-a','e-counter-b','e-counter-c',
+   'e-standby','e-express','e-exits','e-duration','e-notes']
+    .forEach(id => document.getElementById(id).value = '');
+  document.getElementById('e-attraction').innerHTML =
+    '<option value="">— select park first —</option>';
+  document.getElementById('e-timewindow').value = '';
+  const now = new Date();
+  document.getElementById('e-date').value = formatDate(now);
+  document.getElementById('e-time').value = formatTime(now);
+}
+
+// ── Dashboard ──────────────────────────────────────────────────
+async function loadDashboard() {
+  const btn = document.getElementById('refresh-btn');
+  btn.innerHTML = '<span class="spinner"></span>Loading';
+  btn.disabled = true;
+  document.getElementById('dash-rides').innerHTML =
+    '<div class="loading-dash">Fetching data…</div>';
+  try {
+    const resp = await fetch(SCRIPT_URL + '?action=getArrivalsData');
+    const json = await resp.json();
+    if (json.status === 'success') {
+      allDashData = json.data.filter(r => r.attraction);
+      renderDashboard();
+    } else {
+      document.getElementById('dash-rides').innerHTML =
+        '<div class="dash-empty">Could not load data from sheet.</div>';
+    }
+  } catch(e) {
+    document.getElementById('dash-rides').innerHTML =
+      '<div class="dash-empty">Network error. Check connection and try again.</div>';
+  }
+  btn.innerHTML = '↻ Refresh'; btn.disabled = false;
+}
+
+function filterDash(park, el) {
+  dashFilter = park;
+  document.querySelectorAll('.park-pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderDashboard();
+}
+
+function renderDashboard() {
+  const filtered = dashFilter === 'All'
+    ? allDashData
+    : allDashData.filter(r => r.park === dashFilter);
+
+  if (filtered.length === 0) {
+    ['d-total','d-frac','d-sb','d-out'].forEach(id =>
+      document.getElementById(id).textContent = '—');
+    document.getElementById('dash-rides').innerHTML =
+      '<div class="dash-empty">No sessions yet' +
+      (dashFilter !== 'All' ? ' for ' + dashFilter : '') + '.<br>Go count some arrivals!</div>';
+    return;
+  }
+
+  const n = filtered.length;
+  const fracs = filtered.filter(r => r.expressFraction)
+                        .map(r => parseFloat(r.expressFraction));
+  const avgFrac = fracs.length > 0
+    ? (fracs.reduce((a,b)=>a+b,0)/fracs.length).toFixed(2) : '—';
+  const avgSb  = (filtered.reduce((s,r)=>s+parseFloat(r.lambdaStandby||0),0)/n).toFixed(1);
+  const avgOut = (filtered.reduce((s,r)=>s+parseFloat(r.lambdaExits||0),0)/n).toFixed(1);
+
+  document.getElementById('d-total').textContent = n;
+  document.getElementById('d-frac').textContent  = avgFrac;
+  document.getElementById('d-sb').textContent    = avgSb + '/min';
+  document.getElementById('d-out').textContent   = avgOut + '/min';
+
+  const byRide = {};
+  filtered.forEach(r => {
+    const k = r.attraction + '||' + r.park;
+    if (!byRide[k]) byRide[k] = { attraction: r.attraction, park: r.park, entries: [] };
+    byRide[k].entries.push(r);
+  });
+
+  const rides = Object.values(byRide).map(g => {
+    const fs = g.entries.filter(e => e.expressFraction)
+                        .map(e => parseFloat(e.expressFraction));
+    return {
+      ...g, count: g.entries.length,
+      avgFrac: fs.length > 0 ? fs.reduce((a,b)=>a+b,0)/fs.length : null,
+      avgSb:   g.entries.reduce((s,e)=>s+parseFloat(e.lambdaStandby||0),0)/g.entries.length,
+      avgEx:   g.entries.reduce((s,e)=>s+parseFloat(e.lambdaExpress||0),0)/g.entries.length,
+      avgOut:  g.entries.reduce((s,e)=>s+parseFloat(e.lambdaExits||0),0)/g.entries.length
+    };
+  }).sort((a,b) => b.count - a.count);
+
+  document.getElementById('dash-rides').innerHTML = rides.map(r => {
+    const fracStr = r.avgFrac !== null
+      ? r.avgFrac.toFixed(2) + ' (' + (r.avgFrac*100).toFixed(0) + '%)' : '—';
+    return `<div class="ride-row">
+      <div class="rr-top">
+        <div><div class="rr-name">${r.attraction}</div><div class="rr-park">${r.park}</div></div>
+        <div><div class="rr-frac">${fracStr}</div><div class="rr-sessions">${r.count} session${r.count!==1?'s':''}</div></div>
+      </div>
+      <div class="rr-lambdas">
+        <div class="rr-lam">λ standby <span class="lsb">${r.avgSb.toFixed(1)}</span>/min</div>
+        <div class="rr-lam">λ express <span class="lex">${r.avgEx.toFixed(1)}</span>/min</div>
+        <div class="rr-lam">λ exits <span class="lout">${r.avgOut.toFixed(1)}</span>/min</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+window.addEventListener('load', () => {
+  const now = new Date();
+  document.getElementById('e-date').value = formatDate(now);
+  document.getElementById('e-time').value = formatTime(now);
+});
+</script>
+</body>
+</html>
